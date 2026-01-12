@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+env/
+
+# Конфигурация
+.env
+*.env
+
+# База данных
+*.db
+*.sqlite
+*.sqlite3
+
+# Логи
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Временные файлы
+*.tmp
+*.bak
+*.cache
+
+# Тестовые данные
+test_*.json
+admins.json
+
+# Медиа файлы (если есть)
+media/
+uploads/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Устаревшие скрипты (используйте db_manager.py)
+add_initial_stats.py
+edit_stats.py
+
+# Временные файлы проекта
+template_handlers.txt
+test_callbacks.py
+ТЗ_проекта.txt
+ПРОВЕРКА_ПРОЕКТА.md
