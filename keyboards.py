@@ -77,18 +77,20 @@ def admin_actions_menu_reply(admin_name: str) -> types.ReplyKeyboardMarkup:
         types.KeyboardButton("🗑 Удалить админа")
     )
     markup.add(
-        types.KeyboardButton("🔙 К списку админов")
+        types.KeyboardButton("🔙 К списку админов"),
+        types.KeyboardButton("🏠 Главное меню")
     )
     return markup
 
 def admin_channels_menu_reply() -> types.ReplyKeyboardMarkup:
     """Меню управления каналами админа"""
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
         types.KeyboardButton("➕ Прикрепить канал")
     )
     markup.add(
-        types.KeyboardButton("🔙 К админу")
+        types.KeyboardButton("🔙 К админу"),
+        types.KeyboardButton("🏠 Главное меню")
     )
     return markup
 
@@ -101,7 +103,10 @@ def admins_list_reply(admins: List[Dict]) -> types.ReplyKeyboardMarkup:
         # Используем формат: 👤 Username
         markup.add(types.KeyboardButton(f"👤 {username}"))
     
-    markup.add(types.KeyboardButton("🔙 К админам"))
+    markup.add(
+        types.KeyboardButton("🔙 НАЗАД"),
+        types.KeyboardButton("🏠 Главное меню")
+    )
     return markup
 
 def channels_list_for_attach_reply(channels: List[Dict], attached_ids: set) -> types.ReplyKeyboardMarkup:
@@ -119,7 +124,10 @@ def channels_list_for_attach_reply(channels: List[Dict], attached_ids: set) -> t
             # Канал не прикреплен
             markup.add(types.KeyboardButton(f"⬜ {channel_name}"))
     
-    markup.add(types.KeyboardButton("🔙 К каналам админа"))
+    markup.row(
+        types.KeyboardButton("🔙 К каналам админа"),
+        types.KeyboardButton("🏠 Главное меню")
+    )
     return markup
 
 def channels_select_reply(channels: List[Dict]) -> types.ReplyKeyboardMarkup:
@@ -150,12 +158,15 @@ def templates_menu_reply() -> types.ReplyKeyboardMarkup:
 
 def templates_list_reply(templates: List[Dict]) -> types.ReplyKeyboardMarkup:
     """Список шаблонов для выбора"""
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     
     for template in templates:
         markup.add(types.KeyboardButton(f"📝 {template['name']}"))
     
-    markup.add(types.KeyboardButton("🔙 К шаблонам"))
+    markup.add(
+        types.KeyboardButton("🔙 К шаблонам"),
+        types.KeyboardButton("🏠 Главное меню")
+    )
     return markup
 
 def template_actions_menu_reply(template_name: str) -> types.ReplyKeyboardMarkup:
@@ -169,7 +180,8 @@ def template_actions_menu_reply(template_name: str) -> types.ReplyKeyboardMarkup
         types.KeyboardButton("🗑 Удалить шаблон")
     )
     markup.add(
-        types.KeyboardButton("🔙 К списку шаблонов")
+        types.KeyboardButton("🔙 К списку шаблонов"),
+        types.KeyboardButton("🏠 Главное меню")
     )
     return markup
 
@@ -186,7 +198,10 @@ def channels_for_template_reply(channels: List[Dict], assigned_channel_id: str =
         else:
             markup.add(types.KeyboardButton(f"📺 {channel_name}"))
     
-    markup.add(types.KeyboardButton("🔙 К шаблонам"))
+    markup.row(
+        types.KeyboardButton("🔙 К шаблонам"),
+        types.KeyboardButton("🏠 Главное меню")
+    )
     return markup
 
 

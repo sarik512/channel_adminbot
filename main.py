@@ -101,25 +101,55 @@ def can_resolve_api() -> bool:
         return False
 
 # ================== PARSER ==================
-from utils import parse_title_input, generate_tag
+from utils import parse_title_input, generate_tag, parse_channel_id
 
 
 def parse_input(text):
-    """Парсер ожиданий: "Название Сезон Серия" -> возвращает dict с title, season(int), episode(int), tag(str)
+    """Парсер ожиданий: "Название Сезон Серия" или "Название Сезон Серия1-Серия2"
+    
+    Возвращает dict с:
+    - title: название
+    - season: сезон (int)
+    - episode: серия (int) или None если диапазон
+    - episode_start: начало диапазона (int) или None
+    - episode_end: конец диапазона (int) или None
+    - tag: тег
+    - is_range: True если диапазон серий
     """
     try:
-        title, season, episode = parse_title_input(text)
+        result = parse_title_input(text)
+        
+        # Проверяем, вернулся ли диапазон или одна серия
+        if len(result) == 4:
+            # Диапазон серий
+            title, season, episode_start, episode_end = result
+            tag = generate_tag(title)
+            
+            return {
+                "title": title,
+                "season": int(season),
+                "episode": None,
+                "episode_start": int(episode_start),
+                "episode_end": int(episode_end),
+                "tag": tag,
+                "is_range": True
+            }
+        else:
+            # Одна серия
+            title, season, episode = result
+            tag = generate_tag(title)
+            
+            return {
+                "title": title,
+                "season": int(season),
+                "episode": int(episode),
+                "episode_start": None,
+                "episode_end": None,
+                "tag": tag,
+                "is_range": False
+            }
     except ValueError:
         return None
-
-    tag = generate_tag(title)
-
-    return {
-        "title": title,
-        "season": int(season),
-        "episode": int(episode),
-        "tag": tag
-    }
 
 # ================== HANDLERS ==================
 @bot.message_handler(commands=['start', 'menu'])
@@ -525,8 +555,8 @@ def handle_text(message):
         )
         return
     
-    elif text == "🏠 Главное меню":
-        # Возврат в главное меню
+    elif text in ["🏠 Главное меню", "🔙 Главное меню"]:
+        # Возврат в главное меню (поддержка старой и новой кнопки)
         clear_user_state(user_id)
         is_super = is_super_admin(user_id)
         markup = kb.main_menu_reply(is_super)
@@ -627,9 +657,11 @@ def handle_text(message):
             message,
             "📤 *Загрузка контента*\n\n"
             "Отправьте информацию в формате:\n"
-            "`Название Сезон Серия`\n\n"
-            "Пример:\n"
-            "`Боевой континет 1 12`",
+            "• `Название Сезон Серия` - для одной серии\n"
+            "• `Название Сезон Серия1-Серия2` - для диапазона\n\n"
+            "Примеры:\n"
+            "• `Боевой континет 1 12`\n"
+            "• `Боевой континет 1 1-12`",
             parse_mode="Markdown",
             reply_markup=kb.back_menu_reply()
         )
@@ -669,7 +701,12 @@ def handle_text(message):
         bot.reply_to(
             message,
             "📺 *Добавление канала*\n\n"
-            "Отправьте ID канала (например: @channel или -1001234567890):",
+            "Отправьте ID или ссылку на канал:\n\n"
+            "Форматы:\n"
+            "• `@channel_username` - публичный канал\n"
+            "• `https://t.me/channel_username` - ссылка на публичный канал\n"
+            "• `-1001234567890` - числовой ID приватного канала\n\n"
+            "❗ Для приватных ссылок (с `+`) используйте числовой ID",
             parse_mode="Markdown",
             reply_markup=kb.back_menu_reply()
         )
@@ -961,28 +998,6 @@ def handle_text(message):
         )
         return
     
-    elif text == "🔙 К админам":
-        if not is_super_admin(user_id):
-            return
-        
-        clear_user_state(user_id)
-        
-        admins = db.get_all_admins()
-        response = "👥 *Управление админами*\n\n*Список админов:*\n\n"
-        for admin in admins:
-            username = admin.get('username') or f"ID: {admin['user_id']}"
-            username_safe = escape_markdown(username)
-            is_super = " 👑" if admin['user_id'] == SUPER_ADMIN_ID else ""
-            response += f"• {username_safe}{is_super}\n"
-        
-        markup = kb.admins_menu_reply()
-        bot.send_message(
-            message.chat.id,
-            response,
-            parse_mode="Markdown",
-            reply_markup=markup
-        )
-        return
     
     elif text == "📊 Статистика админа":
         if not is_super_admin(user_id):
@@ -1438,16 +1453,37 @@ def handle_text(message):
         if not is_super_admin(user_id):
             return
         
-        channel_id = message.text.strip()
+        channel_input = message.text.strip()
         
-        # Проверка формата ID канала
-        if not (channel_id.startswith('@') or channel_id.startswith('-100')):
+        # Парсим ID канала из различных форматов
+        try:
+            channel_id = parse_channel_id(channel_input)
+            
+            # Если это приватная ссылка-приглашение
+            if channel_id is None:
+                bot.reply_to(
+                    message,
+                    "⚠️ *Приватная ссылка-приглашение*\n\n"
+                    "Вы отправили приватную ссылку-приглашение (с `+`).\n\n"
+                    "Для таких каналов нужен числовой ID канала в формате `-1001234567890`.\n\n"
+                    "Как получить ID:\n"
+                    "1️⃣ Перешлите любое сообщение из канала боту @username_to_id_bot\n"
+                    "2️⃣ Или используйте @getmyid_bot\n"
+                    "3️⃣ Скопируйте числовой ID и отправьте его сюда\n\n"
+                    "Попробуйте еще раз:",
+                    parse_mode="Markdown"
+                )
+                return
+                
+        except ValueError as e:
             bot.reply_to(
                 message,
-                "❌ *Неверный формат ID канала*\n\n"
-                "ID должен быть в одном из форматов:\n"
+                "❌ *Неверный формат*\n\n"
+                f"Ошибка: {str(e)}\n\n"
+                "ID канала должен быть в одном из форматов:\n"
                 "• `@channel_username` - для публичных каналов\n"
-                "• `-1001234567890` - для приватных каналов\n\n"
+                "• `https://t.me/channel_username` - ссылка на публичный канал\n"
+                "• `-1001234567890` - числовой ID для приватных каналов\n\n"
                 "Попробуйте еще раз:",
                 parse_mode="Markdown"
             )
@@ -1810,8 +1846,12 @@ def handle_text(message):
             bot.reply_to(
                 message,
                 "❌ Неверный формат!\n\n"
-                "Используйте: `Название Сезон Серия`\n"
-                "Пример: `Боевой континет 1 12`",
+                "Используйте:\n"
+                "• `Название Сезон Серия` - для одной серии\n"
+                "• `Название Сезон Серия1-Серия2` - для диапазона\n\n"
+                "Примеры:\n"
+                "• `Боевой континет 1 12`\n"
+                "• `Боевой континет 1 1-12`",
                 parse_mode="Markdown"
             )
             return
@@ -1922,16 +1962,27 @@ def handle_video(message):
         # Заменяем переменные
         caption = caption.replace('{title}', data['title'])
         caption = caption.replace('{season}', str(data['season']))
-        caption = caption.replace('{episode}', str(data['episode']))
+        
+        # Для серии - если диапазон, показываем диапазон
+        if data.get('is_range'):
+            episode_str = f"{data['episode_start']}-{data['episode_end']}"
+        else:
+            episode_str = str(data['episode'])
+        caption = caption.replace('{episode}', episode_str)
         caption = caption.replace('{tag}', data['tag'])
         
         logging.info(f"Using template '{template['name']}' for channel {channel_id}")
     else:
         # Используем стандартный формат
+        if data.get('is_range'):
+            episode_text = f"📺 Серии {data['episode_start']}-{data['episode_end']}"
+        else:
+            episode_text = f"📺 Серия {data['episode']}"
+            
         caption = (
             f"🎬 {data['title']}\n\n"
             f"📺 Сезон {data['season']}\n"
-            f"📺 Серия {data['episode']}\n\n"
+            f"{episode_text}\n\n"
             f"{data['tag']}\n\n"
             "Наш канал: https://t.me/+XaaureBEZzMwNDk6\n"
             "Наш чат: https://t.me/Anume2D"
@@ -1952,20 +2003,30 @@ def handle_video(message):
         # Получить id сообщения в канале (если доступно)
         message_id = str(getattr(sent, 'message_id', None)) if sent else None
 
-        # Логирование в статистику (включая file_id и message_id)
+        # Логирование в статистику
+        # Если диапазон - логируем среднюю серию или начальную
+        episode_for_log = data.get('episode') or data.get('episode_start', 0)
+        
         db.log_upload(
             user_id,
             channel_id,
             data['title'],
             int(data['season']),
-            int(data['episode']),
+            int(episode_for_log),
             file_id=sent_file_id,
             message_id=message_id
         )
         
         channel = db.get_channel(channel_id)
+        
+        # Формируем строку для логирования
+        if data.get('is_range'):
+            episode_log = f"S{data['season']}E{data['episode_start']}-{data['episode_end']}"
+        else:
+            episode_log = f"S{data['season']}E{data['episode']}"
+            
         logging.info(
-            f"Published | {data['title']} | S{data['season']}E{data['episode']} | "
+            f"Published | {data['title']} | {episode_log} | "
             f"Channel: {channel['channel_name']} | Admin: {user_id} | msg_id={message_id}"
         )
         
