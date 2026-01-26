@@ -1241,8 +1241,9 @@ def handle_text(message):
         response = "👥 *Управление админами*\n\n*Список админов:*\n\n"
         for admin in admins:
             username = admin.get('username') or f"ID: {admin['user_id']}"
+            username_safe = escape_markdown(username)
             is_super = " 👑" if admin['user_id'] == SUPER_ADMIN_ID else ""
-            response += f"• {username}{is_super}\n"
+            response += f"• {username_safe}{is_super}\n"
         
         markup = kb.admins_menu_reply()
         bot.send_message(
