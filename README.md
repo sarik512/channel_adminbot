@@ -81,7 +81,7 @@ pip install -r requirements.txt
 ### 3. Настройте `.env` файл
 ```env
 BOT_TOKEN=your_bot_token_here
-SUPER_ADMIN_ID=your_telegram_id
+SUPER_ADMIN_ID=your_telegram_id_1,your_telegram_id_2 # Можно несколько через запятую
 DATABASE_FILE=bot_database.db
 MAX_FILE_SIZE_MB=100
 ```

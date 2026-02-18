@@ -23,7 +23,11 @@ load_dotenv()
 
 # Конфигурация
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-SUPER_ADMIN_ID = int(os.getenv("SUPER_ADMIN_ID", 0))
+
+# Support multiple super admins split by comma
+raw_super_admins = os.getenv("SUPER_ADMIN_ID", "0")
+SUPER_ADMIN_IDS = [int(x.strip()) for x in raw_super_admins.split(",") if x.strip()]
+
 MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", 100))
 
 # Настройка логирования
@@ -84,7 +88,7 @@ class TemplateStates(StatesGroup):
 
 def is_super_admin(user_id: int) -> bool:
     """Проверка супер-админа"""
-    return user_id == SUPER_ADMIN_ID
+    return user_id in SUPER_ADMIN_IDS
 
 
 async def is_admin_check(user_id: int) -> bool:
@@ -326,6 +330,12 @@ async def main():
     # Инициализация БД
     await db.init_db()
     logging.info("✅ База данных инициализирована")
+    
+    # Ensure super admins are in DB
+    for admin_id in SUPER_ADMIN_IDS:
+        if not await db.is_admin(admin_id):
+            await db.add_admin(admin_id, username="Super Admin")
+            logging.info(f"SUPER_ADMIN {admin_id} added to database")
     
     # Импортируем и регистрируем все роутеры
     from handlers_upload import router as upload_router

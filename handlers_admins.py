@@ -8,7 +8,7 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 
 import database_async as db
 from main_async import (
-    AdminStates, is_super_admin, is_admin_check, SUPER_ADMIN_ID,
+    AdminStates, is_super_admin, is_admin_check, SUPER_ADMIN_IDS,
     escape_markdown, main_menu_keyboard, back_and_home_keyboard
 )
 import logging
@@ -65,7 +65,7 @@ async def btn_admins(message: Message):
     for admin in admins:
         username = admin.get('username') or f"ID: {admin['user_id']}"
         username_safe = escape_markdown(username)
-        is_super = " 👑" if admin['user_id'] == SUPER_ADMIN_ID else ""
+        is_super = " 👑" if admin['user_id'] in SUPER_ADMIN_IDS else ""
         response += f"• {username_safe}{is_super}\n"
     
     await message.answer(
@@ -157,7 +157,7 @@ async def btn_manage_admins(message: Message, state: FSMContext):
     admins = await db.get_all_admins()
     
     # Исключаем супер-админа из списка
-    admins = [a for a in admins if a['user_id'] != SUPER_ADMIN_ID]
+    admins = [a for a in admins if a['user_id'] not in SUPER_ADMIN_IDS]
     
     if not admins:
         await message.answer("❌ Нет админов для управления")
@@ -469,7 +469,7 @@ async def btn_delete_admin(message: Message, state: FSMContext):
 async def btn_back_to_admins_list(message: Message, state: FSMContext):
     """Возврат к списку админов"""
     admins = await db.get_all_admins()
-    admins = [a for a in admins if a['user_id'] != SUPER_ADMIN_ID]
+    admins = [a for a in admins if a['user_id'] not in SUPER_ADMIN_IDS]
     
     if not admins:
         await message.answer("❌ Нет админов для управления")

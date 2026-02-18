@@ -12,7 +12,11 @@ import socket
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-SUPER_ADMIN_ID = int(os.getenv("SUPER_ADMIN_ID"))
+
+# Support multiple super admins split by comma
+raw_super_admins = os.getenv("SUPER_ADMIN_ID", "0")
+SUPER_ADMIN_IDS = [int(x.strip()) for x in raw_super_admins.split(",") if x.strip()]
+
 # Максимальный размер файла в байтах (по умолчанию 100 MB)
 MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE_MB", "100")) * 1024 * 1024
 
@@ -36,15 +40,16 @@ user_data = {}
 db.init_db()
 db.migrate_from_json(ADMINS_FILE)
 
-# Ensure super admin is in DB
-if not db.is_admin(SUPER_ADMIN_ID):
-    db.add_admin(SUPER_ADMIN_ID, username="Super Admin")
-    logging.info("SUPER_ADMIN added to database")
+# Ensure super admins are in DB
+for admin_id in SUPER_ADMIN_IDS:
+    if not db.is_admin(admin_id):
+        db.add_admin(admin_id, username="Super Admin")
+        logging.info(f"SUPER_ADMIN {admin_id} added to database")
 
 # ================== HELPER FUNCTIONS ==================
 def is_admin(user_id):
     """Проверка, является ли пользователь админом"""
-    if user_id == SUPER_ADMIN_ID:
+    if user_id in SUPER_ADMIN_IDS:
         logging.info(f"Admin check | user={user_id} | SUPER_ADMIN=True")
         return True
     
@@ -54,7 +59,7 @@ def is_admin(user_id):
 
 def is_super_admin(user_id):
     """Проверка, является ли пользователь супер-админом"""
-    return user_id == SUPER_ADMIN_ID
+    return user_id in SUPER_ADMIN_IDS
 
 def get_user_state(user_id):
     """Получить состояние пользователя"""
@@ -85,11 +90,12 @@ def escape_markdown(text: str) -> str:
 
 
 def send_super_admin_alert(text: str):
-    """Попытка оповестить главного админа в случае критической ошибки/восстановления"""
-    try:
-        bot.send_message(SUPER_ADMIN_ID, text)
-    except Exception as e:
-        logging.error(f"Failed to notify super admin: {e}")
+    """Попытка оповестить главных админов в случае критической ошибки/восстановления"""
+    for admin_id in SUPER_ADMIN_IDS:
+        try:
+            bot.send_message(admin_id, text)
+        except Exception as e:
+            logging.error(f"Failed to notify super admin {admin_id}: {e}")
 
 
 def can_resolve_api() -> bool:
@@ -317,7 +323,7 @@ def callback_handler(call):
             text = "👥 *Список админов*\n\n"
             for admin in admins:
                 username = admin.get('username') or f"ID: {admin['user_id']}"
-                is_super = " 👑" if admin['user_id'] == SUPER_ADMIN_ID else ""
+                is_super = " 👑" if admin['user_id'] in SUPER_ADMIN_IDS else ""
                 text += f"• {username}{is_super}\n"
             
             markup = kb.back_button("menu:admins")
@@ -617,7 +623,7 @@ def handle_text(message):
         for admin in admins:
             username = admin.get('username') or f"ID: {admin['user_id']}"
             username_safe = escape_markdown(username)
-            is_super = " 👑" if admin['user_id'] == SUPER_ADMIN_ID else ""
+            is_super = " 👑" if admin['user_id'] in SUPER_ADMIN_IDS else ""
             response += f"• {username_safe}{is_super}\n"
         
         # Показываем меню с кнопками
